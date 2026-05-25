@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.Medicine
+import com.example.ui.chat.AskAiChip
 import com.example.ui.viewmodel.MainViewModel
 import java.time.LocalDate
 import java.time.LocalTime
@@ -37,6 +38,7 @@ import java.util.Locale
 @Composable
 fun MedicinesScreen(
     viewModel: MainViewModel,
+    onAskAi: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val medicinesList by viewModel.medicinesList.collectAsState()
@@ -150,7 +152,8 @@ fun MedicinesScreen(
                         MedicineItemCard(
                             medicine = med,
                             onEdit = { openEditForm(med) },
-                            onDelete = { viewModel.deleteMedicine(med) }
+                            onDelete = { viewModel.deleteMedicine(med) },
+                            onAskAi = { onAskAi(med.name) }
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                     }
@@ -554,6 +557,7 @@ fun MedicineItemCard(
     medicine: Medicine,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onAskAi: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val formatterTime = remember { DateTimeFormatter.ofPattern("h:mm a") }
@@ -658,6 +662,9 @@ fun MedicineItemCard(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.outline
                 )
+
+                // Inline "Ask AI about this medicine" entry point
+                AskAiChip(onClick = onAskAi)
 
                 // Label notifications info status
                 Row(verticalAlignment = Alignment.CenterVertically) {

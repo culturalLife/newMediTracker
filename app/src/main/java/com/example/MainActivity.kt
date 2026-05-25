@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import com.example.ui.chat.ChatBottomSheet
 import com.example.ui.screens.AnalyticsScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.MedicinesScreen
@@ -40,6 +41,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 val isOnboardedState by viewModel.isOnboarded.collectAsState()
+
+                // Chat sheet state lives here so it can be opened from any tab and
+                // overlays the bottom navigation cleanly.
+                var showChatSheet by remember { mutableStateOf(false) }
+                var chatPrefilledMedicine by remember { mutableStateOf<String?>(null) }
+
+                val openChat: (String?) -> Unit = { medicineName ->
+                    chatPrefilledMedicine = medicineName
+                    showChatSheet = true
+                }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize()
@@ -65,10 +76,21 @@ class MainActivity : ComponentActivity() {
                         true -> {
                             MainContentLayout(
                                 viewModel = viewModel,
+                                onOpenChat = openChat,
                                 modifier = Modifier.padding(innerPadding)
                             )
                         }
                     }
+                }
+
+                if (showChatSheet) {
+                    ChatBottomSheet(
+                        onDismiss = {
+                            showChatSheet = false
+                            chatPrefilledMedicine = null
+                        },
+                        prefilledMedicine = chatPrefilledMedicine
+                    )
                 }
             }
         }
@@ -78,6 +100,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainContentLayout(
     viewModel: MainViewModel,
+    onOpenChat: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -121,8 +144,14 @@ fun MainContentLayout(
                 .padding(innerPadding)
         ) {
             when (selectedTab) {
-                0 -> HomeScreen(viewModel = viewModel)
-                1 -> MedicinesScreen(viewModel = viewModel)
+                0 -> HomeScreen(
+                    viewModel = viewModel,
+                    onOpenChat = { onOpenChat(null) }
+                )
+                1 -> MedicinesScreen(
+                    viewModel = viewModel,
+                    onAskAi = { medicineName -> onOpenChat(medicineName) }
+                )
                 2 -> AnalyticsScreen(viewModel = viewModel)
             }
         }

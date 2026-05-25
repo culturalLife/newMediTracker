@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.DoseLog
 import com.example.data.model.Profile
+import com.example.ui.chat.AiPharmacistFab
 import com.example.ui.viewmodel.MainViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -39,6 +40,7 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     viewModel: MainViewModel,
+    onOpenChat: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val selectedProfile by viewModel.selectedProfile.collectAsState()
@@ -265,6 +267,14 @@ fun HomeScreen(
                 }
             }
         }
+
+        // Floating AI Pharmacist launcher pinned bottom-end of the Home tab.
+        AiPharmacistFab(
+            onClick = onOpenChat,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 20.dp, bottom = 20.dp)
+        )
 
         // Dialog Switcher profile modal selection
         if (showProfileDialog) {
