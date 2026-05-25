@@ -1,0 +1,6 @@
+{
+  "name": "MedTrack",
+  "description": "A beautiful, reliable multi-profile local medicine tracker with notifications, custom schedules, compliance analytics, and calendar history logs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
