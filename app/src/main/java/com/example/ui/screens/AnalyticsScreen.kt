@@ -29,6 +29,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.DoseLog
+import com.example.ui.streak.AchievementTracker
+import com.example.ui.streak.AchievementsRow
 import com.example.ui.viewmodel.MainViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -43,10 +45,14 @@ import java.util.Locale
 @Composable
 fun AnalyticsScreen(
     viewModel: MainViewModel,
+    onExportReport: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val allLogs by viewModel.allProfileLogs.collectAsState()
     val medicines by viewModel.medicinesList.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val achievementTracker = remember { AchievementTracker(context.applicationContext) }
+    val unlockedAchievements = remember(allLogs) { achievementTracker.unlockedMilestones() }
 
     var selectedHistoryDay by remember { mutableStateOf<LocalDate?>(null) }
     var showDetailSheet by remember { mutableStateOf(false) }
@@ -74,6 +80,49 @@ fun AnalyticsScreen(
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)
             )
+        }
+
+        // Export Report CTA — generates a self-contained HTML report the user can
+        // share via the system chooser (Drive, email, print, etc.).
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 4.dp)
+                    .clickable { onExportReport() }
+                    .testTag("export_report_button"),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "📋", fontSize = 22.sp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Export Health Report",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "Last 30 days, ready for your doctor visit",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        )
+                    }
+                    Text(
+                        text = "→",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
         // Section A: Overview cards
@@ -242,6 +291,9 @@ fun AnalyticsScreen(
         }
 
         // Section C: Elegant Calendar Log
+        item {
+            AchievementsRow(unlocked = unlockedAchievements)
+        }
         item {
             Card(
                 modifier = Modifier

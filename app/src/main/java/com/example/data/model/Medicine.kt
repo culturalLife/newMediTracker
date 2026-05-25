@@ -15,7 +15,11 @@ data class Medicine(
     val endDate: Long?, // Epoch day
     val notes: String?,
     val colorTag: Int, // 0 to 5 for UI colors
-    val isReminderEnabled: Boolean
+    val isReminderEnabled: Boolean,
+    /** Pills currently on hand. Null means refill tracking is disabled for this med. */
+    val pillCount: Int? = null,
+    /** Pills consumed per scheduled dose (defaults to 1 — covers most prescriptions). */
+    val pillsPerDose: Int = 1
 ) {
     // Helper to split the CSV times list
     fun getTimesList(): List<String> {

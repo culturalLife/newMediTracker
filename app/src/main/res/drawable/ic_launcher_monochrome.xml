@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  MediTracker app icon foreground: teal shield outline with an EKG pulse line.
-  Designed for the 108x108 adaptive icon viewport with a 72x72 safe zone (24..84).
-  All artwork uses strokes (no fill) to match the source design.
+  Monochrome variant for Android 13+ themed icons.
+  Uses pure black so the system can recolor it to match the wallpaper-derived theme.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -10,19 +9,17 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Shield outline: rounded shoulders, gently pointed bottom -->
     <path
         android:pathData="M30,32 L30,55 C30,72 54,86 54,86 C54,86 78,72 78,55 L78,32 Q78,27 73,27 L35,27 Q30,27 30,32 Z"
-        android:strokeColor="#00897B"
+        android:strokeColor="#000000"
         android:strokeWidth="5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="#00000000" />
 
-    <!-- EKG / heartbeat pulse line crossing the shield horizontally -->
     <path
         android:pathData="M26,55 L40,55 L44,46 L50,64 L54,38 L58,64 L62,46 L68,55 L82,55"
-        android:strokeColor="#00897B"
+        android:strokeColor="#000000"
         android:strokeWidth="5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
