@@ -30,6 +30,10 @@ class MedRepository(
         profileDao.insertProfile(profile)
     }
 
+    suspend fun updateProfile(profile: Profile) = withContext(Dispatchers.IO) {
+        profileDao.updateProfile(profile)
+    }
+
     suspend fun deleteProfile(profile: Profile) = withContext(Dispatchers.IO) {
         // Delete cascading items locally
         medicineDao.deleteMedicinesByProfile(profile.id)

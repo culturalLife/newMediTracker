@@ -29,6 +29,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.DoseLog
+import com.example.ui.streak.AchievementTracker
+import com.example.ui.streak.AchievementsRow
 import com.example.ui.viewmodel.MainViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -48,6 +50,9 @@ fun AnalyticsScreen(
 ) {
     val allLogs by viewModel.allProfileLogs.collectAsState()
     val medicines by viewModel.medicinesList.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val achievementTracker = remember { AchievementTracker(context.applicationContext) }
+    val unlockedAchievements = remember(allLogs) { achievementTracker.unlockedMilestones() }
 
     var selectedHistoryDay by remember { mutableStateOf<LocalDate?>(null) }
     var showDetailSheet by remember { mutableStateOf(false) }
@@ -286,6 +291,9 @@ fun AnalyticsScreen(
         }
 
         // Section C: Elegant Calendar Log
+        item {
+            AchievementsRow(unlocked = unlockedAchievements)
+        }
         item {
             Card(
                 modifier = Modifier

@@ -8,7 +8,7 @@ import com.example.data.model.DoseLog
 import com.example.data.model.Medicine
 import com.example.data.model.Profile
 
-@Database(entities = [Profile::class, Medicine::class, DoseLog::class], version = 1, exportSchema = false)
+@Database(entities = [Profile::class, Medicine::class, DoseLog::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao
     abstract fun medicineDao(): MedicineDao

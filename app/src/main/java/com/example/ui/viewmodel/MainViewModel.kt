@@ -127,6 +127,19 @@ class MainViewModel(
         }
     }
 
+    /**
+     * Persist edits to the active profile (typically the caregiver name + phone).
+     * The selected profile flow is updated immediately so Settings reflects the change.
+     */
+    fun updateProfile(profile: Profile) {
+        viewModelScope.launch {
+            repository.updateProfile(profile)
+            if (_selectedProfile.value?.id == profile.id) {
+                _selectedProfile.value = profile
+            }
+        }
+    }
+
     // Medicines actions
     fun addMedicine(
         name: String,
@@ -137,7 +150,9 @@ class MainViewModel(
         endDate: LocalDate?,
         notes: String?,
         colorTag: Int,
-        isReminderEnabled: Boolean
+        isReminderEnabled: Boolean,
+        pillCount: Int? = null,
+        pillsPerDose: Int = 1
     ) {
         val profile = _selectedProfile.value ?: return
         viewModelScope.launch {
@@ -152,7 +167,9 @@ class MainViewModel(
                 endDate = endDate?.toEpochDay(),
                 notes = notes,
                 colorTag = colorTag,
-                isReminderEnabled = isReminderEnabled
+                isReminderEnabled = isReminderEnabled,
+                pillCount = pillCount,
+                pillsPerDose = pillsPerDose
             )
             
             // Insert into local Room SQLite DB
@@ -177,7 +194,9 @@ class MainViewModel(
         endDate: LocalDate?,
         notes: String?,
         colorTag: Int,
-        isReminderEnabled: Boolean
+        isReminderEnabled: Boolean,
+        pillCount: Int? = null,
+        pillsPerDose: Int = 1
     ) {
         val profile = _selectedProfile.value ?: return
         viewModelScope.launch {
@@ -193,7 +212,9 @@ class MainViewModel(
                 endDate = endDate?.toEpochDay(),
                 notes = notes,
                 colorTag = colorTag,
-                isReminderEnabled = isReminderEnabled
+                isReminderEnabled = isReminderEnabled,
+                pillCount = pillCount,
+                pillsPerDose = pillsPerDose
             )
 
             // Update in Room database
@@ -217,12 +238,30 @@ class MainViewModel(
     // Daily Logs Action Tracking
     fun markDoseStatus(log: DoseLog, status: String) {
         viewModelScope.launch {
+            val previousStatus = log.status
             val updatedLog = log.copy(
                 status = status,
                 timestamp = if (status == "Taken" || status == "Skipped") System.currentTimeMillis() else null
             )
             repository.updateLog(updatedLog)
+
+            // Refill bookkeeping: when transitioning INTO Taken from any other state,
+            // decrement the medicine's pill count by its per-dose amount. Reverse the
+            // transaction when the user undoes a "Taken" mark back to Pending.
+            if (status == "Taken" && previousStatus != "Taken") {
+                adjustPillCount(log.medicineId, delta = -1)
+            } else if (previousStatus == "Taken" && status != "Taken") {
+                adjustPillCount(log.medicineId, delta = +1)
+            }
         }
+    }
+
+    private suspend fun adjustPillCount(medicineId: Int, delta: Int) {
+        val med = repository.getMedicineById(medicineId) ?: return
+        val current = med.pillCount ?: return
+        val pillsPerDose = med.pillsPerDose.coerceAtLeast(1)
+        val newCount = (current + delta * pillsPerDose).coerceAtLeast(0)
+        repository.updateMedicine(med.copy(pillCount = newCount))
     }
 
     // Helper Factory Creator

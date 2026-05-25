@@ -30,7 +30,9 @@ import com.example.data.model.Profile
 import com.example.ui.chat.AiPharmacistFab
 import com.example.ui.health.AdherenceInsightCard
 import com.example.ui.health.HealthInsightsViewModel
+import com.example.ui.refill.RefillBanner
 import com.example.ui.viewmodel.MainViewModel
+import com.example.data.refill.RefillCalculator
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -67,6 +69,13 @@ fun HomeScreen(
                 !parsed.isAfter(today) &&
                 (log.status == "Missed" || log.status == "Skipped")
         }
+    }
+
+    // Refill forecasts derived live from the medicines list. Filtered down
+    // inside RefillBanner so the composable is responsible for hiding itself
+    // when no medicine is low.
+    val refillForecasts = remember(medicines) {
+        RefillCalculator.forecastAll(medicines)
     }
 
     var showProfileDialog by remember { mutableStateOf(false) }
@@ -223,6 +232,9 @@ fun HomeScreen(
                     )
                 }
             }
+
+            // Refill warning banner — only visible if any active medicine is low on stock.
+            RefillBanner(forecasts = refillForecasts)
 
             // ───── Adherence Insight CTA / Card
             // Only surface when there are recent misses to discuss; otherwise we keep

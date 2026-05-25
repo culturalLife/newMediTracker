@@ -71,6 +71,9 @@ fun MedicinesScreen(
     var medNotes by remember { mutableStateOf("") }
     var medColorTag by remember { mutableStateOf(0) }
     var medRemindersEnabled by remember { mutableStateOf(true) }
+    // Optional pill-count tracking for refill prediction. Stored as a String in
+    // the form state so the user can clear it; converted to Int? on save.
+    var medPillCount by remember { mutableStateOf("") }
 
     val formatterDate = DateTimeFormatter.ofPattern("MMM d, yyyy")
 
@@ -86,6 +89,7 @@ fun MedicinesScreen(
         medNotes = med.notes ?: ""
         medColorTag = med.colorTag
         medRemindersEnabled = med.isReminderEnabled
+        medPillCount = med.pillCount?.toString().orEmpty()
         showFormDialog = true
     }
 
@@ -101,6 +105,7 @@ fun MedicinesScreen(
         medNotes = ""
         medColorTag = 0
         medRemindersEnabled = true
+        medPillCount = ""
         showFormDialog = true
     }
 
@@ -527,6 +532,27 @@ fun MedicinesScreen(
                                     onCheckedChange = { medRemindersEnabled = it }
                                 )
                             }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Refill tracking — optional pill-count for the low-stock banner.
+                            OutlinedTextField(
+                                value = medPillCount,
+                                onValueChange = { input ->
+                                    if (input.length <= 5 && input.all { it.isDigit() }) {
+                                        medPillCount = input
+                                    }
+                                },
+                                label = { Text("Pills on hand (optional)") },
+                                placeholder = { Text("Enables refill warnings on Home") },
+                                singleLine = true,
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("form_med_pill_count")
+                            )
                         }
                     }
                 },
@@ -534,6 +560,7 @@ fun MedicinesScreen(
                     Button(
                         onClick = {
                             if (medName.isNotBlank() && medDosage.isNotBlank()) {
+                                val parsedPillCount = medPillCount.trim().toIntOrNull()
                                 if (editingMedicine == null) {
                                     viewModel.addMedicine(
                                         name = medName.trim(),
@@ -544,7 +571,8 @@ fun MedicinesScreen(
                                         endDate = medEndDate,
                                         notes = if (medNotes.isBlank()) null else medNotes.trim(),
                                         colorTag = medColorTag,
-                                        isReminderEnabled = medRemindersEnabled
+                                        isReminderEnabled = medRemindersEnabled,
+                                        pillCount = parsedPillCount
                                     )
                                 } else {
                                     viewModel.updateMedicine(
@@ -557,7 +585,8 @@ fun MedicinesScreen(
                                         endDate = medEndDate,
                                         notes = if (medNotes.isBlank()) null else medNotes.trim(),
                                         colorTag = medColorTag,
-                                        isReminderEnabled = medRemindersEnabled
+                                        isReminderEnabled = medRemindersEnabled,
+                                        pillCount = parsedPillCount
                                     )
                                 }
                                 showFormDialog = false
@@ -663,6 +692,21 @@ fun MedicineItemCard(
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary
             )
+
+            // Refill info — only when the user has opted into pill-count tracking.
+            medicine.pillCount?.let { count ->
+                Spacer(modifier = Modifier.height(4.dp))
+                val dosesPerDay = medicine.getTimesList().size.coerceAtLeast(1)
+                val perDose = medicine.pillsPerDose.coerceAtLeast(1)
+                val daysLeft = count / (dosesPerDay * perDose)
+                val isLow = daysLeft <= 7
+                Text(
+                    text = "Pills on hand: $count  \u2022  ~$daysLeft days left",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isLow) Color(0xFFB57700) else MaterialTheme.colorScheme.outline
+                )
+            }
 
             if (!medicine.notes.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
