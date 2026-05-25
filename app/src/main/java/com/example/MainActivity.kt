@@ -17,7 +17,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.report.HtmlReportBuilder
 import com.example.ui.chat.ChatBottomSheet
+import com.example.ui.health.HealthInsightsViewModel
+import com.example.ui.report.ReportScreen
 import com.example.ui.screens.AnalyticsScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.MedicinesScreen
@@ -42,6 +46,11 @@ class MainActivity : ComponentActivity() {
             MyApplicationTheme {
                 val isOnboardedState by viewModel.isOnboarded.collectAsState()
 
+                // Shared health-insights VM scoped to the activity so tab switches preserve state.
+                val insightsVM: HealthInsightsViewModel = viewModel(
+                    factory = HealthInsightsViewModel.Factory()
+                )
+
                 // Chat sheet state lives here so it can be opened from any tab and
                 // overlays the bottom navigation cleanly.
                 var showChatSheet by remember { mutableStateOf(false) }
@@ -50,6 +59,23 @@ class MainActivity : ComponentActivity() {
                 val openChat: (String?) -> Unit = { medicineName ->
                     chatPrefilledMedicine = medicineName
                     showChatSheet = true
+                }
+
+                // Full-screen HTML report overlay state.
+                var reportHtml by remember { mutableStateOf<String?>(null) }
+                var reportProfileName by remember { mutableStateOf("") }
+
+                val openReport: () -> Unit = {
+                    val profile = viewModel.selectedProfile.value
+                    if (profile != null) {
+                        reportProfileName = profile.name
+                        reportHtml = HtmlReportBuilder.build(
+                            profile = profile,
+                            medicines = viewModel.medicinesList.value,
+                            allLogs = viewModel.allProfileLogs.value,
+                            windowDays = 30
+                        )
+                    }
                 }
 
                 Scaffold(
@@ -76,7 +102,9 @@ class MainActivity : ComponentActivity() {
                         true -> {
                             MainContentLayout(
                                 viewModel = viewModel,
+                                insightsVM = insightsVM,
                                 onOpenChat = openChat,
+                                onOpenReport = openReport,
                                 modifier = Modifier.padding(innerPadding)
                             )
                         }
@@ -92,6 +120,18 @@ class MainActivity : ComponentActivity() {
                         prefilledMedicine = chatPrefilledMedicine
                     )
                 }
+
+                // Render the report overlay above everything when present.
+                reportHtml?.let { html ->
+                    ReportScreen(
+                        profileName = reportProfileName,
+                        html = html,
+                        onBack = {
+                            reportHtml = null
+                            reportProfileName = ""
+                        }
+                    )
+                }
             }
         }
     }
@@ -100,7 +140,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainContentLayout(
     viewModel: MainViewModel,
+    insightsVM: HealthInsightsViewModel,
     onOpenChat: (String?) -> Unit,
+    onOpenReport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -146,13 +188,18 @@ fun MainContentLayout(
             when (selectedTab) {
                 0 -> HomeScreen(
                     viewModel = viewModel,
+                    insightsVM = insightsVM,
                     onOpenChat = { onOpenChat(null) }
                 )
                 1 -> MedicinesScreen(
                     viewModel = viewModel,
+                    insightsVM = insightsVM,
                     onAskAi = { medicineName -> onOpenChat(medicineName) }
                 )
-                2 -> AnalyticsScreen(viewModel = viewModel)
+                2 -> AnalyticsScreen(
+                    viewModel = viewModel,
+                    onExportReport = onOpenReport
+                )
             }
         }
     }

@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.Medicine
 import com.example.ui.chat.AskAiChip
+import com.example.ui.health.BiosafetyBadge
+import com.example.ui.health.HealthInsightsViewModel
 import com.example.ui.viewmodel.MainViewModel
 import java.time.LocalDate
 import java.time.LocalTime
@@ -38,11 +40,23 @@ import java.util.Locale
 @Composable
 fun MedicinesScreen(
     viewModel: MainViewModel,
+    insightsVM: HealthInsightsViewModel,
     onAskAi: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val medicinesList by viewModel.medicinesList.collectAsState()
+    val safetyState by insightsVM.safety.collectAsState()
     val context = LocalContext.current
+
+    // Whenever the medicine set changes, the previous safety result is stale.
+    // We auto-reset back to Idle so the user is prompted to re-scan.
+    LaunchedEffect(medicinesList.map { Triple(it.id, it.name, it.dosage) }) {
+        if (safetyState is HealthInsightsViewModel.SafetyState.Success ||
+            safetyState is HealthInsightsViewModel.SafetyState.Error
+        ) {
+            insightsVM.resetSafety()
+        }
+    }
 
     var showFormDialog by remember { mutableStateOf(false) }
     var editingMedicine by remember { mutableStateOf<Medicine?>(null) }
@@ -148,6 +162,18 @@ fun MedicinesScreen(
                         .fillMaxWidth(),
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
                 ) {
+                    // Bio-safety scanner card pinned to the top of the list. Hidden by
+                    // BiosafetyBadge itself when there are no medicines yet.
+                    item {
+                        BiosafetyBadge(
+                            state = safetyState,
+                            medicineCount = medicinesList.size,
+                            isConfigured = insightsVM.isConfigured,
+                            onRunCheck = { insightsVM.runSafetyCheck(medicinesList) },
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                    }
+
                     items(medicinesList) { med ->
                         MedicineItemCard(
                             medicine = med,

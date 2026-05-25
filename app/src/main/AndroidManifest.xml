@@ -45,6 +45,17 @@
             android:launchMode="singleInstance"
             android:theme="@style/Theme.MyApplication" />
 
+        <!-- FileProvider for sharing exported HTML reports with other apps. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- Broadcast Receivers -->
         <receiver
             android:name=".reminder.AlarmReceiver"

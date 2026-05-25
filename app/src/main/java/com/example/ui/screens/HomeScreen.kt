@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.DoseLog
 import com.example.data.model.Profile
 import com.example.ui.chat.AiPharmacistFab
+import com.example.ui.health.AdherenceInsightCard
+import com.example.ui.health.HealthInsightsViewModel
 import com.example.ui.viewmodel.MainViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -40,6 +42,7 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     viewModel: MainViewModel,
+    insightsVM: HealthInsightsViewModel,
     onOpenChat: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -47,6 +50,24 @@ fun HomeScreen(
     val selectedDate by viewModel.selectedDate.collectAsState()
     val profilesList by viewModel.profilesList.collectAsState()
     val doseLogs by viewModel.doseLogsList.collectAsState()
+    val medicines by viewModel.medicinesList.collectAsState()
+    val allLogs by viewModel.allProfileLogs.collectAsState()
+    val insightState by insightsVM.insight.collectAsState()
+
+    // Count Missed/Skipped doses in the last 7 days for the active profile so we can
+    // show the AdherenceInsight CTA only when it would be useful.
+    val recentMissedCount = remember(allLogs) {
+        val today = LocalDate.now()
+        val cutoff = today.minusDays(6)
+        val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        allLogs.count { log ->
+            val parsed = runCatching { LocalDate.parse(log.dateStr, fmt) }.getOrNull()
+            parsed != null &&
+                !parsed.isBefore(cutoff) &&
+                !parsed.isAfter(today) &&
+                (log.status == "Missed" || log.status == "Skipped")
+        }
+    }
 
     var showProfileDialog by remember { mutableStateOf(false) }
     var showCreateProfileInHome by remember { mutableStateOf(false) }
@@ -202,6 +223,56 @@ fun HomeScreen(
                     )
                 }
             }
+
+            // ───── Adherence Insight CTA / Card
+            // Only surface when there are recent misses to discuss; otherwise we keep
+            // the Home tab clean for users with perfect adherence.
+            if (insightsVM.isConfigured &&
+                recentMissedCount > 0 &&
+                insightState is HealthInsightsViewModel.InsightState.Idle
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 4.dp)
+                        .clickable {
+                            insightsVM.loadAdherenceInsight(medicines, allLogs)
+                        }
+                        .testTag("adherence_insight_cta"),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFFF8E1)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "💡", fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "$recentMissedCount missed dose${if (recentMissedCount == 1) "" else "s"} this week",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF6B4A00)
+                            )
+                            Text(
+                                text = "Tap for a supportive insight from your AI pharmacist",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF6B4A00).copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            AdherenceInsightCard(
+                state = insightState,
+                isConfigured = insightsVM.isConfigured,
+                onLoad = { insightsVM.loadAdherenceInsight(medicines, allLogs) },
+                onDismiss = { insightsVM.resetInsight() }
+            )
 
             // Today's list divided by time of day
             if (doseLogs.isEmpty()) {

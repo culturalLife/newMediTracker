@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  FileProvider paths used to share generated HTML reports (and any future cached
+  artifacts) with other apps via Intent.ACTION_SEND. Limited to the app's cache
+  directory so we never accidentally expose user data or external storage.
+-->
+<paths>
+    <cache-path
+        name="reports"
+        path="reports/" />
+</paths>
