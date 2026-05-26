@@ -8,11 +8,11 @@ import android.content.Intent
 import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.MedTrackApplication
 import com.example.MainActivity
 import com.example.data.model.Medicine
-import com.example.reminder.ReminderOverlayActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -67,16 +67,21 @@ class AlarmReceiver : BroadcastReceiver() {
         try {
             context.startActivity(overlayIntent)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.w("AlarmReceiver", "Could not start overlay activity: ${e.message}")
         }
 
         // Reschedule alarm for next day if NOT snooze
         if (!isSnooze) {
+            val pendingResult = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
-                val repo = MedTrackApplication.instance.repository
-                val med = repo.getMedicineById(medicineId)
-                if (med != null) {
-                    ReminderScheduler.scheduleAlarms(context, med)
+                try {
+                    val repo = MedTrackApplication.instance.repository
+                    val med = repo.getMedicineById(medicineId)
+                    if (med != null) {
+                        ReminderScheduler.scheduleAlarms(context, med)
+                    }
+                } finally {
+                    pendingResult.finish()
                 }
             }
         }

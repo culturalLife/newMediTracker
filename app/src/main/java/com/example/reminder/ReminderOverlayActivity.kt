@@ -128,7 +128,6 @@ fun ReminderOverlayScreen(
             
             // Populates logs just in case they don't exist yet, then updates
             repository.populateLogsForDate(profileId, LocalDate.now())
-            val existing = repository.getLogsForProfileAndDate(profileId, dateStr)
             
             launch(Dispatchers.IO) {
                 // Find matching pending/missed log and mark Taken

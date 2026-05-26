@@ -213,7 +213,7 @@ fun AnalyticsScreen(
                             val medLogs = allLogs.filter { it.medicineId == med.id }
                             val rate = if (medLogs.isNotEmpty()) {
                                 (medLogs.count { it.status == "Taken" }.toFloat() / medLogs.size * 100).toInt()
-                            } else 100
+                            } else 0 // No log history yet — show 0% rather than a false 100%
 
                             val tagColor = PROFILE_COLORS[med.colorTag % PROFILE_COLORS.size]
 
@@ -463,8 +463,6 @@ fun CalendarLogDaysView(
     modifier: Modifier = Modifier
 ) {
     val today = LocalDate.now()
-    val yearMonth = today.year to today.monthValue
-
     // Calculate columns offset offset
     val firstDayOfMonth = today.withDayOfMonth(1)
     val startColumnOffset = firstDayOfMonth.dayOfWeek.value % 7
@@ -765,11 +763,11 @@ fun computeAdherenceMetrics(logs: List<DoseLog>): AdherenceMetrics {
 
     val weeklyRate = if (weeklyLogs.isNotEmpty()) {
         (weeklyLogs.count { it.status == "Taken" }.toFloat() / weeklyLogs.size * 100).toInt()
-    } else 100
+    } else 0
 
     val monthlyRate = if (monthlyLogs.isNotEmpty()) {
         (monthlyLogs.count { it.status == "Taken" }.toFloat() / monthlyLogs.size * 100).toInt()
-    } else 100
+    } else 0
 
     return AdherenceMetrics(weeklyRate, monthlyRate)
 }
@@ -804,7 +802,6 @@ fun computeStreaks(logs: List<DoseLog>): StreakDetails {
 
     val start = sortedDates.first()
     val end = LocalDate.now().minusDays(1) // evaluate up to yesterday for general accuracy
-    val totalDays = ChronoUnit.DAYS.between(start, end)
 
     var evaluationDate = start
     while (!evaluationDate.isAfter(end)) {

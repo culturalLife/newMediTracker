@@ -14,6 +14,7 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
             val app = context.applicationContext as MedTrackApplication
             val repo = app.repository
+            val pendingResult = goAsync()
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
@@ -28,6 +29,8 @@ class BootReceiver : BroadcastReceiver() {
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
+                } finally {
+                    pendingResult.finish()
                 }
             }
         }

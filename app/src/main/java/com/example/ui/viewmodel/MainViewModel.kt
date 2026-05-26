@@ -57,14 +57,6 @@ class MainViewModel(
     }.flatMapLatest { (profile, date) ->
         if (profile != null) {
             val dateStr = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-            
-            // Populates logs lazily in the background when date or profile changes
-            viewModelScope.launch {
-                repository.populateLogsForDate(profile.id, date)
-                if (date.isEqual(LocalDate.now())) {
-                    repository.updateMissedLogsToday(profile.id)
-                }
-            }
             repository.getLogsForProfileAndDate(profile.id, dateStr)
         } else {
             flowOf(emptyList())
@@ -92,6 +84,21 @@ class MainViewModel(
                     _isOnboarded.value = false
                 }
             }
+        }
+
+        // Eagerly populate dose logs whenever the active profile or selected date changes.
+        // This is kept separate from the doseLogsList flow so the population side-effect
+        // never races with the Room query subscriber.
+        viewModelScope.launch {
+            combine(_selectedProfile, _selectedDate) { profile, date -> profile to date }
+                .collect { (profile, date) ->
+                    if (profile != null) {
+                        repository.populateLogsForDate(profile.id, date)
+                        if (date.isEqual(LocalDate.now())) {
+                            repository.updateMissedLogsToday(profile.id)
+                        }
+                    }
+                }
         }
     }
 

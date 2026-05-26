@@ -101,7 +101,9 @@ object ReminderScheduler {
             putExtra("IS_SNOOZE", true)
         }
 
-        val requestCode = 9999 + medicineId
+        // Snooze alarms use a separate request-code namespace (500_000 + medicineId)
+        // to guarantee they never clash with regular alarm codes (medicineId * 100 + timeIndex).
+        val requestCode = 500_000 + medicineId
         val pendingIntent = PendingIntent.getBroadcast(
             context,
             requestCode,

@@ -84,7 +84,7 @@ fun HomeScreen(
     val formatterMonthHeader = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy")
 
     // Retrieve active horizontal date items for last 7 days (today is the last item, or clickable)
-    val datesStrip = remember {
+    val datesStrip = remember(LocalDate.now()) {
         val today = LocalDate.now()
         (6 downTo 0).map { today.minusDays(it.toLong()) }
     }

@@ -25,7 +25,10 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "medtrack_database"
                 )
-                .fallbackToDestructiveMigration()
+                // NOTE: fallbackToDestructiveMigrationFrom(1) means only a v1→v2 upgrade
+                // will wipe data. Future migrations (v2→v3+) MUST provide a Migration object
+                // to avoid data loss. Replace with addMigrations(...) when adding new columns.
+                .fallbackToDestructiveMigrationFrom(1)
                 .build()
                 INSTANCE = instance
                 instance

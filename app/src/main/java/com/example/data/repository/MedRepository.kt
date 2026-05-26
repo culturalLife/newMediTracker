@@ -110,14 +110,10 @@ class MedRepository(
                     
                     val initialStatus = if (isPast) {
                         "Missed"
-                    } else if (isToday) {
-                        val parsedTime = LocalTime.parse(time)
-                        if (LocalTime.now().isAfter(parsedTime)) {
-                            "Missed"
-                        } else {
-                            "Pending"
-                        }
                     } else {
+                        // For today (including past-time slots), always seed as Pending.
+                        // updateMissedLogsToday() is responsible for flipping Pending → Missed
+                        // after the grace window, so the user still has a chance to mark Taken.
                         "Pending"
                     }
 
