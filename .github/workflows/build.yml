@@ -1,0 +1,314 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# MediTracker — Android APK Build & Release Workflow
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# ┌─────────────────────────────────────────────────────────────────────────────
+# │ PROJECT OVERVIEW
+# └─────────────────────────────────────────────────────────────────────────────
+# App Name     : MediTracker
+# Package ID   : com.aistudio.medtrack.pyfwxs
+# Version      : 1.0 (versionCode 1)
+# Min SDK      : 26 (Android 8.0 Oreo)
+# Target SDK   : 36
+# Language     : Kotlin + Jetpack Compose (Material 3)
+# Architecture : MVVM · Room · Kotlin Flows · Retrofit · Moshi
+#
+# ┌─────────────────────────────────────────────────────────────────────────────
+# │ COMPLETE FEATURE SUMMARY (all phases shipped)
+# └─────────────────────────────────────────────────────────────────────────────
+#
+# ── PHASE 0 · Core Architecture ──────────────────────────────────────────────
+# • Multi-profile support: create/switch/delete family member profiles, each
+#   with its own medicines and dose logs.
+# • Room database v2 (Profile, Medicine, DoseLog entities).
+# • MedRepository single-source-of-truth with lazy DoseLog population.
+# • ReminderScheduler: exact AlarmManager alarms, reschedule after reboot via
+#   BootReceiver, snooze (10-min intervals) via AlarmReceiver.
+# • ReminderOverlayActivity: full-screen lock-screen notification with
+#   Take / Snooze / Skip actions.
+# • Three-tab bottom nav: Home · Medicines · Analytics.
+# • Onboarding wizard (3-step carousel) with profile creation.
+#
+# ── PHASE 1 · App Icon + Mistral AI Pharmacist ───────────────────────────────
+# • New adaptive icon: teal (#00897B) shield + EKG pulse vector over cream bg.
+#   Monochrome variant for Android 13+ themed icons.
+# • Mistral AI integration via Retrofit/OkHttp/Moshi:
+#   - NetworkModule singleton, MistralApi interface, MistralRepository.
+#   - chat(history): free-form medication Q&A with strict system prompt.
+#   - getMedicineInfo(name): JSON-mode structured info card (Purpose, Dosage,
+#     Food, Warnings, Interactions, Side Effects).
+# • ChatBottomSheet: 92%-height modal with disclaimer, message list, typing
+#   indicator, 5 quick-reply chips, IME-aware input bar.
+# • MedicineInfoCardUi: rich color-coded sections per field.
+# • DisclaimerBanner: "Educational only — not medical advice" pinned.
+# • AiPharmacistFab: pill-shaped "Ask AI" capsule on Home tab.
+# • AskAiChip: inline chip on every medicine card.
+# • INTERNET + ACCESS_NETWORK_STATE permissions added.
+# • API key via secrets-gradle-plugin → BuildConfig.MISTRAL_API_KEY.
+#
+# ── PHASE 2 · Bio-Safety Scanner + Adherence Insight + HTML Health Report ────
+# • Bio-Safety Scanner (Medicines tab):
+#   - HealthInsightsRepository.analyzeSafety() queries Mistral in JSON mode.
+#   - Returns GREEN / YELLOW / RED / UNKNOWN level + concerns list.
+#   - BiosafetyBadge composable with severity-coded concern rows.
+#   - Auto-resets when medicine list changes.
+# • Adherence Insight (Home tab):
+#   - HealthInsightsRepository.getAdherenceInsight() with 7-day missed summary.
+#   - Supportive note + compensation tip + doctor-consult fallback (never alarming).
+#   - AdherenceInsightCard: amber, dismissible, never shown if no API key.
+# • HTML Health Report (Analytics tab):
+#   - HtmlReportBuilder: fully self-contained HTML with inline CSS.
+#     Sections: gradient header, at-a-glance stats, per-medicine breakdown
+#     table, day-by-day log with status pills, lined notes-for-doctor, footer.
+#   - ReportScreen: WebView viewer (JS off) with back + share top bar.
+#   - Share via FileProvider + Intent.ACTION_SEND → Gmail / Drive / print.
+#   - FileProvider registered (cache/reports/ path only).
+# • HealthInsightsViewModel driving both features; shared across tabs.
+# • AnalyticsScreen gets "Export Health Report" CTA card.
+#
+# ── PHASE 3 · Privacy Shield + Streaks + Refill Prediction + Caregiver Mode ──
+# • Privacy Shield (Settings tab):
+#   - AppLockPreferences: PINs stored as 16-byte salted SHA-256 hashes.
+#   - AppLockScreen: BiometricPrompt auto-prompt + 4-6 digit PIN keypad.
+#     Anti-bruteforce: 5 attempts → 30s lockout. Spring-animated shake on fail.
+#   - PinSetupDialog: enter + confirm, saves only when matching.
+#   - MainActivity extends FragmentActivity for biometric support.
+# • Streak Gamification:
+#   - AchievementTracker: 6 tiers (3, 7, 14, 30, 60, 100 days) in SharedPrefs.
+#   - MilestoneConfetti: pure-Compose overlay — 80 colored particles with
+#     physics (gravity + rotation), auto-dismisses after 4.5s.
+#   - AchievementsRow: horizontal medal scroller on Analytics.
+# • Refill Prediction:
+#   - Medicine entity gets pillCount + pillsPerDose (DB bumped to v2).
+#   - RefillCalculator: pure-Kotlin forecast, LOW_STOCK_DAYS = 7.
+#   - RefillBanner: amber Home banner for most-urgent low-stock med.
+#   - Medicine card shows "X pills · ~Y days left" (amber when low).
+#   - markDoseStatus auto-decrements/reverses pillCount on Taken/Undo.
+# • Caregiver Mode (fully offline, no backend):
+#   - Profile entity: caregiverName + caregiverPhone fields.
+#   - CaregiverNotifier.composeMissedDoseSms() → smsto: Intent (no SEND_SMS).
+#   - CaregiverNotifier.composeDailyShareIntent() → text/plain ACTION_SEND.
+# • SettingsScreen: Privacy Shield + Caregiver config + "Test SMS" button.
+#
+# ── HOME SCREEN smart cards (composite view) ─────────────────────────────────
+# • Date strip (last 7 days, tap to review past logs).
+# • Animated daily progress bar (taken / total).
+# • Dose cards grouped by time-of-day (Morning / Afternoon / Evening / Night).
+#   Each shows: name, dosage, scheduled time, status, timestamp, action buttons.
+# • Refill warning banner (when pill count is low).
+# • Adherence insight CTA (when ≥1 missed dose this week and key configured).
+# • "Ask AI" floating capsule bottom-right.
+#
+# ── MEDICINES SCREEN ──────────────────────────────────────────────────────────
+# • Bio-safety scanner card pinned at top of list.
+# • Full add/edit form: name, dosage, frequency presets, custom time pickers,
+#   start/end dates, notes, color tag, reminder toggle, pills-on-hand field.
+# • "Ask AI" chip on each medicine card.
+# • Pill count + days-left inline display (amber when ≤7 days).
+#
+# ── ANALYTICS SCREEN ─────────────────────────────────────────────────────────
+# • Export Health Report CTA.
+# • Weekly + monthly adherence % cards.
+# • Per-medicine breakdown with progress bars.
+# • Consistency streak card (current + longest) with motivational message.
+# • Achievements row (unlocked milestones).
+# • Calendar heat-map (clickable days → day-detail bottom sheet).
+# • 7-day bar chart (Compose Canvas).
+# • 30-day trend line chart (Compose Canvas, filled gradient).
+#
+# ┌─────────────────────────────────────────────────────────────────────────────
+# │ SECRETS REQUIRED IN GITHUB REPOSITORY SETTINGS
+# └─────────────────────────────────────────────────────────────────────────────
+# MISTRAL_API_KEY  → Your Mistral AI key (https://console.mistral.ai)
+#                    Injected via secrets-gradle-plugin → BuildConfig.
+#                    WITHOUT this key all AI features degrade gracefully —
+#                    the app still builds and runs fine.
+#
+# DEBUG_KEYSTORE_BASE64 → Auto-populated from debug.keystore.base64 in repo.
+#                         Used for signing the debug APK in CI.
+#                         Already committed to the repository.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+name: Build MediTracker APK
+
+on:
+  push:
+    branches:
+      - main
+      - 'feat/**'
+      - 'fix/**'
+      - 'release/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type (debug or release)'
+        required: false
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+
+# Cancel in-progress runs on the same branch to save minutes
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Force Node.js 24 for all actions to suppress Node.js 20 deprecation warnings
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  JAVA_VERSION: '21'
+  GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true'
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      # ── 2. Java ──────────────────────────────────────────────────────────────
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: gradle
+
+      # ── 3. Gradle cache ──────────────────────────────────────────────────────
+      - name: Cache Gradle wrapper
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/wrapper
+            ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # ── 4. Gradle wrapper permissions ────────────────────────────────────────
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      # ── 5. Debug keystore ─────────────────────────────────────────────────────
+      # The repo ships debug.keystore.base64 so CI can build a signed debug APK
+      # without requiring any extra secrets. We decode it here.
+      - name: Restore debug keystore
+        run: |
+          echo "Decoding debug keystore from repository file..."
+          base64 --decode debug.keystore.base64 > debug.keystore
+          echo "Keystore file created: $(ls -lh debug.keystore)"
+
+      # ── 6. Create .env for secrets-gradle-plugin ─────────────────────────────
+      # The Secrets Gradle plugin reads MISTRAL_API_KEY from a local .env file.
+      # In CI we write it from the GitHub secret. If the secret is absent (e.g.
+      # a fork PR), we fall back to the placeholder in .env.example so the build
+      # still succeeds — all AI features simply degrade gracefully at runtime.
+      - name: Write .env file for secrets plugin
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          if [ -n "$MISTRAL_API_KEY" ]; then
+            echo "MISTRAL_API_KEY=$MISTRAL_API_KEY" > .env
+            echo "GEMINI_API_KEY=placeholder" >> .env
+            echo "✅ MISTRAL_API_KEY injected from secret."
+          else
+            echo "⚠️  MISTRAL_API_KEY secret not set — using placeholder from .env.example."
+            echo "   All AI features will degrade gracefully at runtime."
+            cp .env.example .env
+          fi
+
+      # ── 7. Validate Gradle configuration ────────────────────────────────────
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      # ── 8. Build debug APK ───────────────────────────────────────────────────
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      # ── 9. Rename APK with branch + commit info ───────────────────────────────
+      - name: Rename APK artifact
+        run: |
+          BRANCH="${GITHUB_REF_NAME//\//-}"        # replace slashes with dashes
+          SHORT_SHA="${GITHUB_SHA::7}"
+          DATE="$(date +%Y%m%d)"
+          SRC="app/build/outputs/apk/debug/app-debug.apk"
+          DEST="MediTracker-${BRANCH}-${SHORT_SHA}-${DATE}-debug.apk"
+          cp "$SRC" "$DEST"
+          echo "APK_NAME=$DEST" >> $GITHUB_ENV
+          echo "APK_PATH=$DEST"  >> $GITHUB_ENV
+          echo "✅ APK renamed to: $DEST"
+          ls -lh "$DEST"
+
+      # ── 10. Upload APK as workflow artifact ───────────────────────────────────
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: ${{ env.APK_PATH }}
+          retention-days: 30
+          if-no-files-found: error
+
+      # ── 11. Also upload the raw build output for convenience ──────────────────
+      - name: Upload raw build outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-debug-raw-${{ github.sha }}
+          path: app/build/outputs/apk/debug/
+          retention-days: 14
+          if-no-files-found: warn
+
+      # ── 12. Build summary ─────────────────────────────────────────────────────
+      - name: Write build summary
+        if: always()
+        run: |
+          echo "## 🏥 MediTracker Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${GITHUB_REF_NAME}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${GITHUB_SHA::7}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Trigger** | ${GITHUB_EVENT_NAME} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Java** | ${{ env.JAVA_VERSION }} (Temurin) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Build type** | Debug |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Min SDK** | 26 (Android 8.0+) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target SDK** | 36 |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Artifact" >> $GITHUB_STEP_SUMMARY
+          echo "\`${{ env.APK_NAME }}\` — retained 30 days" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✨ Features in this build" >> $GITHUB_STEP_SUMMARY
+          echo "- 🛡️ Teal shield + EKG pulse adaptive icon" >> $GITHUB_STEP_SUMMARY
+          echo "- 🤖 Mistral AI Pharmacist chatbot (free-form + structured cards)" >> $GITHUB_STEP_SUMMARY
+          echo "- ⚠️ Bio-safety scanner (Green / Yellow / Red interaction badge)" >> $GITHUB_STEP_SUMMARY
+          echo "- 💛 Adherence insight card (supportive, non-alarming)" >> $GITHUB_STEP_SUMMARY
+          echo "- 📋 Self-contained HTML health report (shareable via system chooser)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔒 Privacy Shield (biometric + salted-hash PIN, 5-attempt lockout)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🏆 Streak gamification (6 milestones + pure-Compose confetti)" >> $GITHUB_STEP_SUMMARY
+          echo "- 💊 Refill prediction (pill count, auto-decrement, low-stock banner)" >> $GITHUB_STEP_SUMMARY
+          echo "- 👨‍👩‍👧 Caregiver mode (offline SMS deep-link, no SEND_SMS permission)" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 Analytics: bar chart, trend line, calendar heat-map, achievements" >> $GITHUB_STEP_SUMMARY
+          echo "- ⏰ Exact alarms, lock-screen overlay, snooze, boot-restore" >> $GITHUB_STEP_SUMMARY
+          echo "- 👨‍👩‍👦 Multi-profile (family member tracking)" >> $GITHUB_STEP_SUMMARY
+
+  # ── Optional: notify on failure ─────────────────────────────────────────────
+  notify-on-failure:
+    name: Notify on failure
+    runs-on: ubuntu-latest
+    needs: build
+    if: failure() && github.ref == 'refs/heads/main'
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Annotate failure
+        run: |
+          echo "::error::MediTracker build failed on main branch — commit ${{ github.sha }}"
+          echo "Check the build logs at: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
